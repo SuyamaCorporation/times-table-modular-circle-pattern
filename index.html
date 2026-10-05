@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Times Table Modular Circle Pattern Art</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-950 min-h-screen text-white font-sans">
+
+<div class="max-w-3xl mx-auto p-4">
+  <h1 class="text-2xl font-bold text-center text-amber-400 mb-1">🔢 Times Table Circle Art</h1>
+  <p class="text-center text-gray-400 mb-4 text-sm">Modular arithmetic meets generative art</p>
+
+  <div class="relative">
+    <canvas id="circle-canvas" class="w-full rounded-xl border border-gray-800 block bg-black" height="500"
+      aria-label="Times table modular circle pattern"></canvas>
+  </div>
+
+  <!-- Controls -->
+  <div class="bg-gray-900 rounded-xl p-4 mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div>
+      <label class="text-xs text-gray-400 block mb-1">Multiplier: <span id="mult-val" class="text-amber-400">2.00</span></label>
+      <input type="range" id="multiplier" min="2" max="20" step="0.01" value="2"
+        class="w-full accent-amber-500"
+        oninput="document.getElementById('mult-val').textContent=parseFloat(this.value).toFixed(2); if(!animating) draw()"
+        aria-label="Multiplier">
+    </div>
+    <div>
+      <label class="text-xs text-gray-400 block mb-1">Points: <span id="pts-val" class="text-amber-400">200</span></label>
+      <input type="range" id="points" min="20" max="500" step="10" value="200"
+        class="w-full accent-amber-500"
+        oninput="document.getElementById('pts-val').textContent=this.value; if(!animating) draw()"
+        aria-label="Number of points">
+    </div>
+    <div class="flex flex-col gap-1">
+      <label class="text-xs text-gray-400" for="color-mode">Color</label>
+      <select id="color-mode" class="bg-gray-800 border border-gray-600 text-white rounded px-2 py-1 text-sm"
+        onchange="if(!animating) draw()">
+        <option value="index">By Index</option>
+        <option value="angle">By Angle</option>
+        <option value="gold">Gold</option>
+        <option value="neon">Neon</option>
+      </select>
+    </div>
+    <div class="flex flex-col gap-1">
+      <label class="text-xs text-gray-400" for="line-width">Line Width</label>
+      <input type="range" id="line-width" min="0.3" max="3" step="0.1" value="0.8"
+        class="w-full accent-amber-500" oninput="if(!animating) draw()"
+        aria-label="Line width">
+    </div>
+  </div>
+
+  <div class="bg-gray-900 rounded-xl p-3 mt-3 flex flex-wrap gap-3 items-center justify-between">
+    <div class="flex gap-2">
+      <button onclick="toggleAnimate()" id="anim-btn"
+        class="bg-amber-700 hover:bg-amber-600 text-white px-4 py-2 rounded text-sm font-medium transition">
+        ▶ Animate
+      </button>
+      <button onclick="draw()" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm transition">
+        Redraw
+      </button>
+      <button onclick="exportSVG()" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm transition">
+        📥 SVG
+      </button>
+    </div>
+    <div class="text-xs text-gray-500">
+      Click canvas to randomize • <span id="anim-label">Idle</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('circle-canvas');
+const ctx = canvas.getContext('2d');
+let W, H, animId, animating = false, animMult = 2;
+
+function resize() {
+  W = canvas.offsetWidth;
+  H = 500;
+  canvas.width = W;
+  canvas.height = H;
+}
+
+function getLineColor(i, total, fromAngle, toAngle, mode) {
+  const t = i / total;
+  if (mode === 'index') return `hsla(${Math.floor(t * 360)},90%,65%,0.6)`;
+  if (mode === 'angle') return `hsla(${Math.floor(toAngle * 180 / Math.PI)},90%,65%,0.6)`;
+  if (mode === 'gold') return `hsla(${40 + t * 20},100%,${50 + t * 20}%,0.7)`;
+  if (mode === 'neon') {
+    const hues = [300, 180, 60, 120, 240];
+    return `hsla(${hues[Math.floor(t * hues.length) % hues.length]},100%,60%,0.6)`;
+  }
+  return 'rgba(255,200,100,0.6)';
+}
+
+function draw() {
+  const mult = parseFloat(document.getElementById('multiplier').value);
+  const numPts = parseInt(document.getElementById('points').value);
+  const colorMode = document.getElementById('color-mode').value;
+  const lw = parseFloat(document.getElementById('line-width').value);
+
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+
+  const cx = W / 2, cy = H / 2;
+  const R = Math.min(W, H) * 0.42;
+
+  // Draw circle
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, 0, 2 * Math.PI);
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Draw points on circle
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  for (let i = 0; i < numPts; i++) {
+    const angle = (2 * Math.PI * i / numPts) - Math.PI / 2;
+    const px = cx + R * Math.cos(angle);
+    const py = cy + R * Math.sin(angle);
+    ctx.beginPath();
+    ctx.arc(px, py, 1.5, 0, 2 * Math.PI);
+    ctx.fill();
+  }
+
+  // Draw lines: connect point i to point (i * mult) % numPts
+  ctx.lineWidth = lw;
+  for (let i = 0; i < numPts; i++) {
+    const fromAngle = (2 * Math.PI * i / numPts) - Math.PI / 2;
+    const toIdx = (i * mult) % numPts;
+    const toAngle = (2 * Math.PI * toIdx / numPts) - Math.PI / 2;
+
+    const x1 = cx + R * Math.cos(fromAngle);
+    const y1 = cy + R * Math.sin(fromAngle);
+    const x2 = cx + R * Math.cos(toAngle);
+    const y2 = cy + R * Math.sin(toAngle);
+
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.strokeStyle = getLineColor(i, numPts, fromAngle, toAngle, colorMode);
+    ctx.stroke();
+  }
+
+  // Draw multiplier label
+  ctx.fillStyle = 'rgba(251,191,36,0.8)';
+  ctx.font = 'bold 16px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('× ' + mult.toFixed(2), cx, cy + R + 24);
+  ctx.textAlign = 'left';
+}
+
+let animDir = 1;
+function animLoop() {
+  animMult += 0.02 * animDir;
+  if (animMult > 20) { animMult = 20; animDir = -1; }
+  if (animMult < 2) { animMult = 2; animDir = 1; }
+
+  document.getElementById('multiplier').value = animMult;
+  document.getElementById('mult-val').textContent = animMult.toFixed(2);
+  draw();
+  animId = requestAnimationFrame(animLoop);
+}
+
+function toggleAnimate() {
+  animating = !animating;
+  if (animating) {
+    animMult = parseFloat(document.getElementById('multiplier').value);
+    document.getElementById('anim-btn').textContent = '⏸ Stop';
+    document.getElementById('anim-label').textContent = 'Sweeping multiplier...';
+    animLoop();
+  } else {
+    cancelAnimationFrame(animId);
+    document.getElementById('anim-btn').textContent = '▶ Animate';
+    document.getElementById('anim-label').textContent = 'Idle';
+  }
+}
+
+canvas.addEventListener('click', () => {
+  const presets = [2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 17, 19, Math.PI, Math.E, 1.618];
+  const mult = presets[Math.floor(Math.random() * presets.length)];
+  document.getElementById('multiplier').value = mult;
+  document.getElementById('mult-val').textContent = mult.toFixed ? mult.toFixed(2) : mult;
+  if (!animating) draw();
+});
+
+function exportSVG() {
+  const mult = parseFloat(document.getElementById('multiplier').value);
+  const numPts = parseInt(document.getElementById('points').value);
+  const colorMode = document.getElementById('color-mode').value;
+  const lw = parseFloat(document.getElementById('line-width').value);
+
+  const CX = 250, CY = 250, R = 210;
+  let lines = '';
+
+  for (let i = 0; i < numPts; i++) {
+    const fromAngle = (2 * Math.PI * i / numPts) - Math.PI / 2;
+    const toIdx = (i * mult) % numPts;
+    const toAngle = (2 * Math.PI * toIdx / numPts) - Math.PI / 2;
+    const x1 = (CX + R * Math.cos(fromAngle)).toFixed(2);
+    const y1 = (CY + R * Math.sin(fromAngle)).toFixed(2);
+    const x2 = (CX + R * Math.cos(toAngle)).toFixed(2);
+    const y2 = (CY + R * Math.sin(toAngle)).toFixed(2);
+    const t = i / numPts;
+    const h = Math.floor(t * 360);
+    lines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="hsl(${h},90%,65%)" stroke-width="${lw}" stroke-opacity="0.6"/>`;
+  }
+
+  const svg = `<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" style="background:#000"><circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>${lines}</svg>`;
+  const blob = new Blob([svg], {type: 'image/svg+xml'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'times-table-circle.svg';
+  a.click();
+}
+
+window.addEventListener('resize', () => { resize(); if (!animating) draw(); });
+resize();
+draw();
+</script>
+</body>
+</html>
